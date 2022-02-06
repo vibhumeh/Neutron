@@ -3,7 +3,8 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../ERC20/ERC20.sol";
 import "./vouching.sol";
-contract Loaning is vouching(address(this)), Neutron(msg.sender,address(this)) {
+import "./Array/Arrayfuncs.sol";
+contract Loaning is vouching(address(this)), Neutron(msg.sender,address(this)),Arrayfuncs {
 using SafeMath for uint256;
 
 //Neutron token=new Neutron(msg.sender,address(this));
@@ -16,8 +17,10 @@ address _owner;
 address treasury;
 IERC20 token;
 BMIERC20 _token;
+IArrayfuncs calc;
 uint lim;
 constructor(uint _lim,address _treasury){
+calc=IArrayfuncs(address(this));
 token=IERC20(address(this));
 _token=BMIERC20(address(this));
 lim=_lim; //upper limit of tiers
@@ -33,6 +36,13 @@ _;}
     token=IERC20(tk);
     _token=BMIERC20(tk);
 }*/
+mapping (address=> uint) private Ltotal;
+mapping (address=> uint) private Dtotal;
+mapping (address=> uint) private defexpo;
+mapping (address=>uint) private medianD;
+mapping (address=>uint[]) private princeD;
+mapping (address=>uint) private medianL;
+mapping (address=>uint[]) private princeL;
 mapping (address => bool) private _match; //checks if the loan taker has taken the highest teir loan availible to them
 mapping (address =>uint) private timer; // stores the time when loanee returned last loan
 mapping (address=>uint) public cooldown; //amount of time between two loans
@@ -56,29 +66,33 @@ require(tier>0);
 require(pending[msg.sender]==false);
 
 amount[msg.sender]=(10**tier).mul(adj);
-_token.mint(msg.sender,amount[msg.sender]);    //replace transfer with mint
-principal[msg.sender]=amount[msg.sender].mul(11);
-principal[msg.sender]=principal[msg.sender].div(10);
+_token.mint(msg.sender,amount[msg.sender]);    
+principal[msg.sender]=amount[msg.sender].mul(121);//20% interest+1% admin fee
+principal[msg.sender]=principal[msg.sender].div(100);
 pending[msg.sender]=true;    
 time[msg.sender]=block.timestamp;
 if(tier==creditsc_c[msg.sender])
 _match[msg.sender]==true;
 }
-//repayment rate calc: 1-(defults[msg.sender]/(repayed[msg.sender]+defults[msg.sender]))
+//repayment rate calc: 1-Drate[msg.sender]; //R
+//defult rate calc=(defults[msg.sender]/(repayed[msg.sender]+defults[msg.sender]));
 function returnloan() public returns(bool){
  require(pending[msg.sender]=true);
  if(block.timestamp.sub(time[msg.sender])>420000){
      creditsc_uc[msg.sender]=0;
      creditsc_c[msg.sender]=0;
      defults[msg.sender]+=1;
+     Dtotal[msg.sender]+=principal[msg.sender];
      if(friend[msg.sender]!=address(0)){
          creditsc_c[friend[msg.sender]]=0;
          creditsc_uc[friend[msg.sender]]=0;
          friend[msg.sender]=address(0);
      }
      creditsc_c[friend[msg.sender]]=0;
-     meddefprinc[msg.sender]+=principal[msg.sender];
-     meddefprinc[msg.sender]/=2;
+     princeD[msg.sender].push(principal[msg.sender]);
+calc.sortA(princeD[msg.sender]);
+medianD[msg.sender]=calc.getmedian(princeD[msg.sender]);//M1
+defexpo[msg.sender]=Ltotal[msg.sender]-Dtotal[msg.sender]; //D
      return false;
  }
  else{
@@ -118,15 +132,17 @@ _token.burn(msg.sender,amount[msg.sender]);
  
  }//first if
  repayed[msg.sender]+=1;
- 
-
+ Dtotal[msg.sender]+=principal[msg.sender];
+ princeL[msg.sender].push(principal[msg.sender]);
+ calc.sortA(princeL[msg.sender]);
+ medianL[msg.sender]=calc.getmedian(princeL[msg.sender]);//M2
+defexpo[msg.sender]=Ltotal[msg.sender]-Dtotal[msg.sender]; //D
  return true;    
  
      
- }
+ }//outermost if/else
+  
 }
-//funtions after this are for testing purposes
-
 function freemoney() public  payable{
     _token.mint(msg.sender,(1000*adj));
 }
@@ -142,10 +158,6 @@ function increment(address pardonee)public{
     
 }
 
-function testtransfer() public{
-    token.transferFrom(msg.sender,address(this),100);
-}
 
 }
     
-
