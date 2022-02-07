@@ -36,6 +36,9 @@ _;}
     token=IERC20(tk);
     _token=BMIERC20(tk);
 }*/
+mapping (address=>uint) public P2;
+mapping (address=>uint) private Rrate;
+mapping (address=>uint) private Drate;
 mapping (address=> uint) private Ltotal;
 mapping (address=> uint) private Dtotal;
 mapping (address=> uint) private defexpo;
@@ -74,42 +77,44 @@ time[msg.sender]=block.timestamp;
 if(tier==creditsc_c[msg.sender])
 _match[msg.sender]==true;
 }
-//repayment rate calc: 1-Drate[msg.sender]; //R
-//defult rate calc=(defults[msg.sender]/(repayed[msg.sender]+defults[msg.sender]));
+//repayment rate calc: rrate[msg.sender]=1-Drate[msg.sender]; //R
+//defult rate calc: drate=(defults[msg.sender]/(repayed[msg.sender]+defults[msg.sender]));
 function returnloan() public returns(bool){
+//I2 = (R*M2-D*H)*I-Ix
+P2[msg.sender]=(((Rrate[msg.sender].mul(medianL[msg.sender])).sub(defexpo[msg.sender].mul(Drate[msg.sender]))).mul(principal[msg.sender]));
  require(pending[msg.sender]=true);
  if(block.timestamp.sub(time[msg.sender])>420000){
      creditsc_uc[msg.sender]=0;
      creditsc_c[msg.sender]=0;
      defults[msg.sender]+=1;
-     Dtotal[msg.sender]+=principal[msg.sender];
+     Dtotal[msg.sender]+=P2[msg.sender];
      if(friend[msg.sender]!=address(0)){
          creditsc_c[friend[msg.sender]]=0;
          creditsc_uc[friend[msg.sender]]=0;
          friend[msg.sender]=address(0);
      }
      creditsc_c[friend[msg.sender]]=0;
-     princeD[msg.sender].push(principal[msg.sender]);
+     princeD[msg.sender].push(P2[msg.sender]);
 calc.sortA(princeD[msg.sender]);
 medianD[msg.sender]=calc.getmedian(princeD[msg.sender]);//M1
 defexpo[msg.sender]=Ltotal[msg.sender]-Dtotal[msg.sender]; //D
      return false;
  }
  else{
-require(token.allowance(msg.sender,address(this))==principal[msg.sender],"please approve required amount");
-uint interest=principal[msg.sender].sub(amount[msg.sender]);
+require(token.allowance(msg.sender,address(this))==P2[msg.sender],"please approve required amount");
+uint interest=P2[msg.sender].sub(amount[msg.sender]);
 //uint burning=80;
 //uint treasurym=15;
 //uint ownerm=5;
 
 //ducjdnc
-require(interest+amount[msg.sender]==principal[msg.sender],"math error");
+require(interest+amount[msg.sender]==P2[msg.sender],"math error");
 
 //token.transferFrom(msg.sender,_owner,interest.mul(ownerm.div(100)));
 token.transferFrom(msg.sender,treasury,interest.div(2));//mul(treasurym.div(100)));
 _token.burn(msg.sender,interest.div(2));//mul(burning.div(100)));
 _token.burn(msg.sender,amount[msg.sender]);
- //replace with burn //math to calc principal needs to be checked
+ //replace with burn //math to calc P2 needs to be checked
  pending[msg.sender]=false;
  creditsc_uc[msg.sender]+=1;
  
@@ -132,11 +137,14 @@ _token.burn(msg.sender,amount[msg.sender]);
  
  }//first if
  repayed[msg.sender]+=1;
- Dtotal[msg.sender]+=principal[msg.sender];
- princeL[msg.sender].push(principal[msg.sender]);
+ Dtotal[msg.sender]+=P2[msg.sender];
+ princeL[msg.sender].push(P2[msg.sender]);
  calc.sortA(princeL[msg.sender]);
  medianL[msg.sender]=calc.getmedian(princeL[msg.sender]);//M2
 defexpo[msg.sender]=Ltotal[msg.sender]-Dtotal[msg.sender]; //D
+Drate[msg.sender]=defults[msg.sender].div(repayed[msg.sender].add(defults[msg.sender]));//H
+
+Rrate[msg.sender]=(lim.div(lim)).sub(Drate[msg.sender]);//R
  return true;    
  
      
