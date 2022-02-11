@@ -70,8 +70,9 @@ require(pending[msg.sender]==false);
 
 amount[msg.sender]=(10**tier).mul(adj);
 _token.mint(msg.sender,amount[msg.sender]);    
-principal[msg.sender]=amount[msg.sender].mul(121);//20% interest+1% admin fee
+principal[msg.sender]=amount[msg.sender].mul(121);//20%,interest+1% admin fee
 principal[msg.sender]=principal[msg.sender].div(100);
+P2[msg.sender]=(((Rrate[msg.sender].mul(medianL[msg.sender])).sub(defexpo[msg.sender].mul(Drate[msg.sender]))).mul(principal[msg.sender]));
 pending[msg.sender]=true;    
 time[msg.sender]=block.timestamp;
 if(tier==creditsc_c[msg.sender])
@@ -81,7 +82,7 @@ _match[msg.sender]==true;
 //defult rate calc: drate=(defults[msg.sender]/(repayed[msg.sender]+defults[msg.sender]));
 function returnloan() public returns(bool){
 //I2 = (R*M2-D*H)*I-Ix
-P2[msg.sender]=(((Rrate[msg.sender].mul(medianL[msg.sender])).sub(defexpo[msg.sender].mul(Drate[msg.sender]))).mul(principal[msg.sender]));
+
  require(pending[msg.sender]=true);
  if(block.timestamp.sub(time[msg.sender])>420000){
      creditsc_uc[msg.sender]=0;
