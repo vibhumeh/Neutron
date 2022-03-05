@@ -4,7 +4,8 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../ERC20/ERC20.sol";
 import "./vouching.sol";
 import "./Array/Arrayfuncs.sol";
-contract Loaning is vouching(address(this)), Neutron(msg.sender,address(this)),Arrayfuncs {
+import "./ds-math/math.sol";
+contract Loaning is vouching(address(this)), Neutron(msg.sender,address(this)),Arrayfuncs,DSMath {
 using SafeMath for uint256;
 
 //Neutron token=new Neutron(msg.sender,address(this));
@@ -63,16 +64,19 @@ mapping (address => uint) time;
 
 //function to take loan
 function takeloan (uint tier) public payable{
-require(block.timestamp.sub(timer[msg.sender])>=cooldown[msg.sender],"you are still under cooldown"); //so no loan spams
+require(sub(block.timestamp,timer[msg.sender])>=cooldown[msg.sender],"you are still under cooldown"); //so no loan spams
 require(creditsc_c[msg.sender]>=tier,"you do not have a high enough credit score");
 require(tier>0);
 require(pending[msg.sender]==false);
-
-amount[msg.sender]=(10**tier).mul(adj);
+uint interest;
+uint adfee;
+amount[msg.sender]=mul(10**tier,adj);
 _token.mint(msg.sender,amount[msg.sender]);    
-principal[msg.sender]=amount[msg.sender].mul(121);//20%,interest+1% admin fee
-principal[msg.sender]=principal[msg.sender].div(100);
-P2[msg.sender]=(((Rrate[msg.sender].mul(medianL[msg.sender])).sub(defexpo[msg.sender].mul(Drate[msg.sender]))).mul(principal[msg.sender]));
+interest=wmul(amount[msg.sender],20*adj.div(100));//20%,interest+1% admin fee
+//mul(Rrate[msg.sender],medianL[msg.sender])
+//mul(defexpo[msg.sender],Drate[msg.sender])
+//
+P2[msg.sender]=mul(sub(mul(Rrate[msg.sender],medianL[msg.sender]),mul(defexpo[msg.sender],Drate[msg.sender])),(principal[msg.sender]));
 pending[msg.sender]=true;    
 time[msg.sender]=block.timestamp;
 if(tier==creditsc_c[msg.sender])
